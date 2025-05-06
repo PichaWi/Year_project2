@@ -48,18 +48,9 @@ class Enemy(pg.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.center = (x, y)
         self.health = 2
-        self.move_timer = ra.randint(30, 120)
-        self.direction = ra.choice([-1, 0, 1]), ra.choice([-1, 0, 1])
 
     def update(self):
-        self.move_timer -= 1
-        if self.move_timer <= 0:
-            self.direction = ra.choice([-1, 0, 1]), ra.choice([-1, 0, 1])
-            self.move_timer = ra.randint(30, 120)
-        dx, dy = self.direction
-        self.rect.x += dx
-        self.rect.y += dy
-        self.rect.clamp_ip(pg.Rect(Config.stage_side_width, 100, Config.stage_middle_width, Config.stage_height))
+        pass  # No movement, enemies stand still
 
     def take_damage(self, damage):
         self.health -= damage
@@ -76,21 +67,34 @@ class Stage:
         self.border_rect = pg.Rect(Config.stage_side_width, 100, Config.stage_middle_width, Config.stage_height)
 
     def generate_level(self):
+        # Place obstacles so they don't overlap and are inside the red box
         num_obstacles = ra.randint(6, 7)
         obstacle_materials = ['glass', 'wood', 'iron', 'diamond', 'gold', 'bomb', 'vibranium']
-        for _ in range(num_obstacles):
+        attempts = 0
+        while len(self.stage_obstacles) < num_obstacles and attempts < 200:
             material = ra.choice(obstacle_materials)
-            x = ra.randint(Config.stage_side_width + Config.obstacle_size // 2,
-                           Config.stage_side_width + Config.stage_middle_width - Config.obstacle_size // 2)
-            y = ra.randint(100 + Config.obstacle_size // 2, 100 + Config.stage_height - Config.obstacle_size // 2)
-            self.stage_obstacles.add(Obstacle(x, y, material))
+            x = ra.randint(Config.stage_side_width,
+                           Config.stage_side_width + Config.stage_middle_width - Config.obstacle_size)
+            y = ra.randint(100,
+                           100 + Config.stage_height - Config.obstacle_size)
+            new_rect = pg.Rect(x, y, Config.obstacle_size, Config.obstacle_size)
+            if not any(ob.rect.colliderect(new_rect) for ob in self.stage_obstacles):
+                self.stage_obstacles.add(Obstacle(x, y, material))
+            attempts += 1
 
+        # Place enemies so they don't overlap obstacles or other enemies, and are inside the red box
         num_enemies = ra.randint(2, 4)
-        for _ in range(num_enemies):
+        attempts = 0
+        while len(self.enemies) < num_enemies and attempts < 200:
             x = ra.randint(Config.stage_side_width + Config.enemy_size // 2,
                            Config.stage_side_width + Config.stage_middle_width - Config.enemy_size // 2)
-            y = ra.randint(100 + Config.enemy_size // 2, 100 + Config.stage_height - Config.enemy_size // 2)
-            self.enemies.add(Enemy(x, y))
+            y = ra.randint(100 + Config.enemy_size // 2,
+                           100 + Config.stage_height - Config.enemy_size // 2)
+            new_rect = pg.Rect(x - Config.enemy_size // 2, y - Config.enemy_size // 2, Config.enemy_size, Config.enemy_size)
+            if not any(ob.rect.colliderect(new_rect) for ob in self.stage_obstacles) and \
+               not any(en.rect.colliderect(new_rect) for en in self.enemies):
+                self.enemies.add(Enemy(x, y))
+            attempts += 1
 
     def check_stage_clear(self):
         return len(self.enemies) == 0
@@ -113,7 +117,7 @@ class Bullet(pg.sprite.Sprite):
     def __init__(self, x, y, direction, skill):
         super().__init__()
         self.image = pg.Surface([Config.bullet_radius * 2, Config.bullet_radius * 2], pg.SRCALPHA)
-        pg.draw.circle(self.image, (255,255,0), (Config.bullet_radius, Config.bullet_radius), Config.bullet_radius)  # Yellow bullet
+        pg.draw.circle(self.image, (255,255,0), (Config.bullet_radius, Config.bullet_radius), Config.bullet_radius)
         self.rect = self.image.get_rect(center=(x, y))
         self.direction = direction
         self.speed = Config.bullet_speed
@@ -145,6 +149,7 @@ class Character(pg.sprite.Sprite):
         self.movement_up = 0
         self.movement_down = 0
         self.missed_shots = 0
+        self.shoot_cooldown = 0
 
     def move(self, dy):
         portal_h = 20
@@ -166,6 +171,8 @@ class Character(pg.sprite.Sprite):
             self.current_item_index = (self.current_item_index + direction) % len(self.items_list)
 
     def shoot(self):
+        if self.shoot_cooldown > 0:
+            return False
         current_item = self.items_list[self.current_item_index]
         if current_item.use_skill():
             direction = 1
@@ -179,8 +186,13 @@ class Character(pg.sprite.Sprite):
             elif current_item.skill == "EXPLOSIVE":
                 bullet = Bullet(self.rect.centerx, self.rect.centery, direction, "EXPLOSIVE")
                 self.bullets.add(bullet)
+            self.shoot_cooldown = 10
             return True
         return False
+
+    def update_cooldown(self):
+        if self.shoot_cooldown > 0:
+            self.shoot_cooldown -= 1
 
 class Drawer:
     def __init__(self, screen):
