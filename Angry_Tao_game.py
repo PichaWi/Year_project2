@@ -129,6 +129,29 @@ class Bullet(pg.sprite.Sprite):
         self.direction = direction
         self.speed = Config.bullet_speed
         self.skill = skill
+        self.game = game
+        self.color = Config.skill_properties[skill]['color']
+        
+    def apply_skill_effect(self, target):
+        if self.skill == 'SPREAD':
+            self.handle_spread()
+        elif self.skill == 'EXPLOSIVE':
+            self.handle_explosive()
+    
+    def handle_spread(self):
+        # Create 2 additional bullets at angles
+        for angle in [-15, 15]:
+            new_bullet = Bullet(self.rect.x, self.rect.y, 
+                              self.direction, self.skill, self.game)
+            new_bullet.rect.y += angle * 2
+            self.game.character.bullets.add(new_bullet)
+            
+    def handle_explosive(self):
+        # Damage all enemies in radius
+        explosion_radius = 100
+        for enemy in self.game.stage.enemies:
+            if a.dist(enemy.rect.center, self.rect.center) < explosion_radius:
+                enemy.take_damage(2)
 
     def update(self):
         self.rect.x += self.speed * self.direction

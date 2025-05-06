@@ -11,6 +11,15 @@ class Config:
         (128, 0, 128),   # Purple
         (0, 255, 255),   # Cyan
     ]
+    
+    skill_properties = {
+        'NORMAL': {'cooldown': 0, 'color': (169, 169, 169)},
+        'SPREAD': {'cooldown': 1.5, 'color': (0, 128, 0)},
+        'EXPLOSIVE': {'cooldown': 3.0, 'color': (255, 0, 0)},
+        'SHATTER': {'cooldown': 2.0, 'color': (255, 255, 255)},
+        'HEAT': {'cooldown': 2.5, 'color': (255, 69, 0)},
+        'ICE': {'cooldown': 2.0, 'color': (0, 255, 255)}
+    }
 
     game_color = {'W': (255, 255, 255), 'BL': (0, 0, 0), 'R': (255, 0, 0), 'G': (
         0, 255, 0), 'B': (0, 0, 255), 'LIGHTGRAY': (200, 200, 200),

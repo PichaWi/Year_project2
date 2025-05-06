@@ -3,6 +3,36 @@ from Angry_Tao_game import *
 from Tao_config import Config
 
 
+class UI:
+    def show_upgrade_menu(self, current_stage):
+        options = [
+            ("Increase Ammo Capacity", lambda: self.upgrade_ammo(current_stage)),
+            ("Unlock New Skill", lambda: self.unlock_skill(current_stage)),
+            ("Enhance Damage", lambda: self.enhance_damage(current_stage))
+        ]
+        ra.shuffle(options)
+        
+        # Draw menu
+        menu_rect = pg.Rect(400, 200, 700, 500)
+        self.screen.fill(Config.game_color['BL'], menu_rect)
+        
+        for i, (text, _) in enumerate(options):
+            text_surf = self.font.render(text, True, Config.game_color['W'])
+            self.screen.blit(text_surf, (420, 250 + i*100))
+        
+        pg.display.flip()
+        
+        # Handle selection
+        while True:
+            event = pg.event.wait()
+            if event.type == pg.MOUSEBUTTONDOWN:
+                x, y = event.pos
+                if 420 <= x <= 1080:
+                    index = (y - 250) // 100
+                    if 0 <= index < 3:
+                        options[index][1]()
+                        return
+
 class Game:
     """
     Handle the game to run, reset and update
@@ -29,6 +59,8 @@ class Game:
         self.current_stage_enemies_defeated = 0
         self.current_stage_obstacles_destroyed = 0
         self.game_over = False
+        self.current_stage = 1
+        self.upgrade_available = False
 
     def game_reset(self):
         self.stats["movement_up"].append(self.character.movement_up)
@@ -126,6 +158,12 @@ class Game:
 
             pg.display.flip()
             self.clock.tick(Config.fps)
+            if self.stage.check_stage_clear() and not self.upgrade_available:
+                self.upgrade_available = True
+                self.ui.show_upgrade_menu(self.current_stage)
+                self.current_stage += 1
+                self.stage = Stage()
+                self.upgrade_available = False
 
         pg.quit()
 
