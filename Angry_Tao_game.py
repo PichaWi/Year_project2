@@ -1,6 +1,6 @@
 import pygame as pg
 import random as ra
-import math as math
+import math as a
 from Tao_config import Config
 
 class Obstacle(pg.sprite.Sprite):
@@ -60,19 +60,53 @@ class Enemy(pg.sprite.Sprite):
             return True
         return False
 
+class Civilian(pg.sprite.Sprite):
+    def __init__(self, x, y):
+        super().__init__()
+        self.image = pg.Surface([Config.enemy_size, Config.enemy_size])
+        self.image.fill((0, 255, 0))  # Green color for civilian
+        self.rect = self.image.get_rect()
+        self.rect.center = (x, y)
+        self.health = 1
+        self.move_timer = ra.randint(30, 120)
+        self.direction = ra.choice([-1, 0, 1]), ra.choice([-1, 0, 1])
+
+    def update(self):
+        self.move_timer -= 1
+        if self.move_timer <= 0:
+            self.direction = ra.choice([-1, 0, 1]), ra.choice([-1, 0, 1])
+            self.move_timer = ra.randint(30, 120)
+        dx, dy = self.direction
+        self.rect.x += dx
+        self.rect.y += dy
+        self.rect.clamp_ip(pg.Rect(Config.stage_side_width, 100, Config.stage_middle_width, Config.stage_height))
+
+    def take_damage(self, damage):
+        self.health -= damage
+        if self.health <= 0:
+            self.kill()
+            return True
+        return False
+
 class Stage:
-    def __init__(self):
+    def __init__(self, stage_number=1):
+        self.stage_number = stage_number
         self.stage_obstacles = pg.sprite.Group()
         self.enemies = pg.sprite.Group()
+        self.civilians = pg.sprite.Group()
         self.generate_level()
         self.border_rect = pg.Rect(Config.stage_side_width, 100, Config.stage_middle_width, Config.stage_height)
 
     def generate_level(self):
-        # Place obstacles inside red box without overlap
-        num_obstacles = ra.randint(6, 7)
+        base_obstacles = 6
+        base_civilians = 1
+
+        num_obstacles = min(base_obstacles + self.stage_number, 15)
+        num_civilians = min(base_civilians + self.stage_number // 2, 10)
+
         obstacle_materials = ['glass', 'wood', 'iron', 'diamond', 'gold', 'bomb', 'vibranium']
         attempts = 0
-        while len(self.stage_obstacles) < num_obstacles and attempts < 200:
+        while len(self.stage_obstacles) < num_obstacles and attempts < 300:
             material = ra.choice(obstacle_materials)
             x = ra.randint(Config.stage_side_width,
                            Config.stage_side_width + Config.stage_middle_width - Config.obstacle_size)
@@ -83,7 +117,6 @@ class Stage:
                 self.stage_obstacles.add(Obstacle(x, y, material))
             attempts += 1
 
-        # Place enemies inside red box without overlapping obstacles or other enemies
         num_enemies = ra.randint(2, 4)
         attempts = 0
         portal_h = 20
@@ -97,6 +130,18 @@ class Stage:
             if not any(ob.rect.colliderect(new_rect) for ob in self.stage_obstacles) and \
                not any(en.rect.colliderect(new_rect) for en in self.enemies):
                 self.enemies.add(Enemy(x, y))
+            attempts += 1
+
+        attempts = 0
+        while len(self.civilians) < num_civilians and attempts < 300:
+            x = ra.randint(Config.stage_side_width + Config.enemy_size // 2,
+                           Config.stage_side_width + Config.stage_middle_width - Config.enemy_size // 2)
+            y = ra.randint(min_y, max_y)
+            new_rect = pg.Rect(x - Config.enemy_size // 2, y - Config.enemy_size // 2, Config.enemy_size, Config.enemy_size)
+            if not any(ob.rect.colliderect(new_rect) for ob in self.stage_obstacles) and \
+               not any(en.rect.colliderect(new_rect) for en in self.enemies) and \
+               not any(civ.rect.colliderect(new_rect) for civ in self.civilians):
+                self.civilians.add(Civilian(x, y))
             attempts += 1
 
     def check_stage_clear(self):
@@ -116,13 +161,27 @@ class Items:
             return True
         return False
 
+class ExplosiveBlock(pg.sprite.Sprite):
+    def __init__(self, x, y):
+        super().__init__()
+        size = Config.obstacle_size * 2
+        self.image = pg.Surface((size, size), pg.SRCALPHA)
+        self.image.fill((255, 100, 0, 150))
+        self.rect = self.image.get_rect(center=(x, y))
+        self.timer = 60  # lasts about 1 second
+
+    def update(self):
+        self.timer -= 1
+        if self.timer <= 0:
+            self.kill()
+
 class Bullet(pg.sprite.Sprite):
     def __init__(self, x, y, direction, skill, speed=None, damage=1):
         super().__init__()
         self.image = pg.Surface([Config.bullet_radius * 2, Config.bullet_radius * 2], pg.SRCALPHA)
         pg.draw.circle(self.image, (255,255,0), (Config.bullet_radius, Config.bullet_radius), Config.bullet_radius)
         self.rect = self.image.get_rect(center=(x, y))
-        self.direction = direction  # (dx, dy) normalized vector
+        self.direction = direction
         self.speed = speed if speed else Config.bullet_speed
         self.skill = skill
         self.damage = damage
@@ -134,16 +193,35 @@ class Bullet(pg.sprite.Sprite):
             self.rect.bottom < 0 or self.rect.top > Config.game_height):
             self.kill()
 
+class ExplosiveBullet(Bullet):
+    def __init__(self, x, y, direction):
+        super().__init__(x, y, direction, "EXPLOSIVE")
+        self.speed = Config.bullet_speed * 0.8
+        self.damage = 3
+
+    def update(self):
+        super().update()
+
+    def explode(self, game, hit_pos):
+        block = ExplosiveBlock(*hit_pos)
+        game.explosive_blocks.add(block)
+        self.kill()
+
 class Character(pg.sprite.Sprite):
     def __init__(self, unlocked_weapons=None):
         super().__init__()
         self.image = pg.Surface([Config.character_radius * 2, Config.character_radius * 2], pg.SRCALPHA)
         pg.draw.circle(self.image, Config.game_color['G'], (Config.character_radius, Config.character_radius), Config.character_radius)
         
-        # Set character X to portal X (left portal center X)
+        # Align character X exactly with left portal center X
         portal_w = 40
         portal_x = Config.stage_side_width // 2  # Left portal center X
-        self.rect = self.image.get_rect(center=(portal_x, Config.game_height // 2))
+        
+        # Spawn vertically centered in the game window
+        spawn_y = Config.game_height // 2
+        
+        self.rect = self.image.get_rect(center=(portal_x, spawn_y))
+        
         if unlocked_weapons is None:
             unlocked_weapons = ["Normal"]
         self.items_list = []
@@ -151,7 +229,7 @@ class Character(pg.sprite.Sprite):
             if skill == "Normal":
                 self.items_list.append(Items("Normal", "NORMAL", 50, "NORMAL"))
             elif skill == "Spread":
-                self.items_list.append(Items("Spread", "SPREAD", 10, "SPREAD"))  # Reduced ammo
+                self.items_list.append(Items("Spread", "SPREAD", 10, "SPREAD"))
             elif skill == "Shotgun":
                 self.items_list.append(Items("Shotgun", "SHOTGUN", 15, "SHOTGUN"))
             elif skill == "Sniper":
@@ -197,11 +275,7 @@ class Character(pg.sprite.Sprite):
             return False
 
         middle_x = Config.stage_side_width + Config.stage_middle_width // 2
-        if self.rect.centerx < middle_x:
-            direction = (1, 0)
-        else:
-            direction = (-1, 0)
-
+        direction = (1, 0) if self.rect.centerx < middle_x else (-1, 0)
         skill = current_item.skill
 
         if skill == "NORMAL":
@@ -218,12 +292,9 @@ class Character(pg.sprite.Sprite):
                 self.bullets.add(bullet)
 
         elif skill == "SHOTGUN":
-            angles = [-30, -20, -10, 0, 10, 20, 30]
-            for angle in angles:
-                rad = math.radians(angle)
-                dx = math.cos(rad) * direction[0] - math.sin(rad) * direction[1]
-                dy = math.sin(rad) * direction[0] + math.cos(rad) * direction[1]
-                bullet = Bullet(self.rect.centerx, self.rect.centery, (dx, dy), "SHOTGUN")
+            offsets = [-15, 0, 15]
+            for offset in offsets:
+                bullet = Bullet(self.rect.centerx, self.rect.centery + offset, direction, "SHOTGUN")
                 self.bullets.add(bullet)
 
         elif skill == "SNIPER":
@@ -247,25 +318,8 @@ class Character(pg.sprite.Sprite):
         if self.switch_cooldown > 0:
             self.switch_cooldown -= 1
 
-class ExplosiveBullet(Bullet):
-    def __init__(self, x, y, direction):
-        super().__init__(x, y, direction, "EXPLOSIVE")
-        self.speed = Config.bullet_speed * 0.8
-        self.damage = 3
-
-    def update(self):
-        super().update()
-        # Collision detection and explosion handled externally
-
-    def explode(self, game):
-        angles = [0, 45, 90, 135, 180, 225, 270, 315]
-        for angle in angles:
-            rad = math.radians(angle)
-            dx = math.cos(rad)
-            dy = math.sin(rad)
-            bullet = Bullet(self.rect.centerx, self.rect.centery, (dx, dy), "EXPLOSIVE", speed=Config.bullet_speed*0.7, damage=1)
-            game.character.bullets.add(bullet)
-        self.kill()
+    def all_ammo_empty(self):
+        return all(item.fixed_ammo <= 0 for item in self.items_list)
 
 class Drawer:
     def __init__(self, screen):
@@ -285,6 +339,8 @@ class Drawer:
     def draw_enemies(self, stage):
         for enemy in stage.enemies:
             self.screen.blit(enemy.image, enemy.rect)
+        for civ in stage.civilians:
+            self.screen.blit(civ.image, civ.rect)
 
     def draw_portals(self, character):
         portal_color = (0, 255, 255)
@@ -306,6 +362,9 @@ class Drawer:
         pg.draw.line(self.screen, (255, 255, 255), (0, y_top), (Config.game_width, y_top), 3)
         pg.draw.line(self.screen, (255, 255, 255), (0, y_bottom), (Config.game_width, y_bottom), 3)
 
+    def draw_explosive_blocks(self, blocks):
+        blocks.draw(self.screen)
+
 class UI:
     def __init__(self, screen):
         self.screen = screen
@@ -314,10 +373,6 @@ class UI:
     def draw_text(self, text, pos, color=(255, 255, 255)):
         rendered_text = self.font.render(text, True, color)
         self.screen.blit(rendered_text, pos)
-        
-    def draw_score(self, character):
-        score_text = f"Score: {character.score}"
-        self.draw_text(score_text, (Config.game_width - 200, 20))
 
     def draw_item_ui(self, character):
         x_offset = 20
@@ -329,3 +384,7 @@ class UI:
             self.draw_text(ammo_text, (x_offset + i * 60, y_offset + 30), (255, 255, 255))
         current_item_text = f"Current Item: {character.items_list[character.current_item_index].name}"
         self.draw_text(current_item_text, (20, Config.game_height - 80))
+
+    def draw_score(self, character):
+        score_text = f"Score: {character.score}"
+        self.draw_text(score_text, (Config.game_width - 200, 20))
