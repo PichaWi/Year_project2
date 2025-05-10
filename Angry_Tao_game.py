@@ -1,6 +1,6 @@
 import pygame as pg
 import random as ra
-import math as a
+import math as math
 from Tao_config import Config
 
 class Obstacle(pg.sprite.Sprite):
@@ -10,6 +10,12 @@ class Obstacle(pg.sprite.Sprite):
         self.material = material
         self.color = Config.game_color.get(material.upper(), Config.game_color['LIGHTGRAY'])
         self.image.fill(self.color)
+        
+        # Draw black border (2 pixels thick)
+        border_color = (0, 0, 0)  # Black
+        border_thickness = 2
+        pg.draw.rect(self.image, border_color, self.image.get_rect(), border_thickness)
+        
         self.rect = self.image.get_rect()
         self.rect.topleft = (x, y)
         self.health = self.get_health(material)
@@ -43,10 +49,10 @@ class Obstacle(pg.sprite.Sprite):
 class Enemy(pg.sprite.Sprite):
     def __init__(self, x, y):
         super().__init__()
-        self.image = pg.Surface([Config.enemy_size, Config.enemy_size])
-        self.image.fill(Config.game_color['R'])
-        self.rect = self.image.get_rect()
-        self.rect.center = (x, y)
+        original_image = pg.image.load("image/Enemy.png").convert_alpha()
+        desired_width, desired_height = 50, 50
+        self.image = pg.transform.scale(original_image, (desired_width, desired_height))        
+        self.rect = self.image.get_rect(center=(x, y))
         self.health = 2
 
     def update(self):
@@ -63,10 +69,10 @@ class Enemy(pg.sprite.Sprite):
 class Civilian(pg.sprite.Sprite):
     def __init__(self, x, y):
         super().__init__()
-        self.image = pg.Surface([Config.enemy_size, Config.enemy_size])
-        self.image.fill((0, 255, 0))  # Green color for civilian
-        self.rect = self.image.get_rect()
-        self.rect.center = (x, y)
+        self.image = pg.image.load("image/civilian.webp").convert_alpha()
+        desired_width, desired_height = Config.enemy_size, Config.enemy_size * 2
+        self.image = pg.transform.scale(self.image, (desired_width, desired_height))
+        self.rect = self.image.get_rect(center=(x, y))
         self.health = 1
         self.move_timer = ra.randint(30, 120)
         self.direction = ra.choice([-1, 0, 1]), ra.choice([-1, 0, 1])
@@ -210,17 +216,17 @@ class ExplosiveBullet(Bullet):
 class Character(pg.sprite.Sprite):
     def __init__(self, unlocked_weapons=None):
         super().__init__()
-        self.image = pg.Surface([Config.character_radius * 2, Config.character_radius * 2], pg.SRCALPHA)
-        pg.draw.circle(self.image, Config.game_color['G'], (Config.character_radius, Config.character_radius), Config.character_radius)
+        # Load character image with transparency
+        self.image = pg.image.load("image/AngryTao.jpg").convert_alpha()
+        # Optionally scale image to fit your character size
+        desired_size = Config.character_radius * 2
+        self.image = pg.transform.scale(self.image, (desired_size, desired_size))
+        self.rect = self.image.get_rect()
         
-        # Align character X exactly with left portal center X
-        portal_w = 40
-        portal_x = Config.stage_side_width // 2  # Left portal center X
-        
-        # Spawn vertically centered in the game window
+        # Set initial position aligned with portal X as before
+        portal_x = Config.stage_side_width // 2
         spawn_y = Config.game_height // 2
-        
-        self.rect = self.image.get_rect(center=(portal_x, spawn_y))
+        self.rect.center = (portal_x, spawn_y)
         
         if unlocked_weapons is None:
             unlocked_weapons = ["Normal"]

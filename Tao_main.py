@@ -8,6 +8,11 @@ class Game:
         pg.init()
         self.screen = pg.display.set_mode((Config.game_width, Config.game_height))
         pg.display.set_caption("Angry Tao Project")
+
+        # Load and scale background image
+        self.background_image = pg.image.load("image/Background.jpg").convert()
+        self.background_image = pg.transform.scale(self.background_image, (Config.game_width, Config.game_height))
+
         self.ui = UI(self.screen)
         self.unlocked_weapons = ["Normal"]
         self.current_stage = 1
@@ -19,6 +24,7 @@ class Game:
         self.upgrade_available = False
         self.portal_cooldown = 0
         self.game_over = False
+        self.game_over_due_to_civilian = False  # Flag for negative score game over
         self.explosive_blocks = pg.sprite.Group()
 
     def handle_collisions(self):
@@ -80,6 +86,10 @@ class Game:
 
     def check_game_over(self):
         if self.character.all_ammo_empty():
+            self.game_over_due_to_civilian = False
+            self.game_over = True
+        elif self.character.score < 0:
+            self.game_over_due_to_civilian = True
             self.game_over = True
 
     def draw_game_over(self):
@@ -96,6 +106,11 @@ class Game:
         button_rect = pg.Rect(Config.game_width // 2 - 100, 350, 200, 60)
         pg.draw.rect(self.screen, (255, 255, 255), button_rect)
         self.screen.blit(button_text, (button_rect.centerx - button_text.get_width() // 2, button_rect.centery - button_text.get_height() // 2))
+
+        if self.game_over_due_to_civilian:
+            message_font = pg.font.Font(None, 36)
+            message_text = message_font.render("That a civilian, you murderer", True, (255, 0, 0))
+            self.screen.blit(message_text, (Config.game_width // 2 - message_text.get_width() // 2, button_rect.bottom + 20))
 
         pg.display.flip()
         return button_rect
@@ -195,6 +210,7 @@ class Game:
                             self.stage = Stage(self.current_stage)
                             self.explosive_blocks.empty()
                             self.game_over = False
+                            self.game_over_due_to_civilian = False
                 self.clock.tick(Config.fps)
                 continue
 
@@ -205,7 +221,8 @@ class Game:
             self.update_game()
             self.check_game_over()
 
-            self.screen.fill(Config.game_color['BL'])
+            self.screen.blit(self.background_image, (0, 0))
+
             self.drawer.draw_portal_lines()
             self.drawer.draw_stage(self.stage)
             self.drawer.draw_portals(self.character)
@@ -215,6 +232,7 @@ class Game:
             self.drawer.draw_explosive_blocks(self.explosive_blocks)
             self.ui.draw_item_ui(self.character)
             self.ui.draw_score(self.character)
+
             pg.display.flip()
             self.clock.tick(Config.fps)
 
