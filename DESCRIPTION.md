@@ -15,33 +15,9 @@ Angry Tao is a 2D shooting game developed in Python using Pygame. The player con
 
 ## UML Class Diagram
 
-+----------------+ +----------------+ +----------------+
-| Game |<>--------| Character |<>--------| Items |
-+----------------+ +----------------+ +----------------+
-| - screen | | - image | | - name |
-| - stage | | - rect | | - skill |
-| - character | | - items_list | | - ammo |
-| - drawer | | - bullets | +----------------+
-| - ui | +----------------+
-| - explosive_blocks | + move() |
-| - current_stage | + shoot() |
-+----------------+ +----------------+
+![Angry Tao UML Class Diagram](![alt text](image.png))
 
-+----------------+ +----------------+ +----------------+
-| Stage |<>--------| Obstacle | | Enemy |
-+----------------+ +----------------+ +----------------+
-| - stage_obstacles | - image | | - image |
-| - enemies | - rect | | - rect |
-| - civilians | - health | | - health |
-+----------------+ +----------------+ +----------------+
-
-+----------------+
-| Civilian |
-+----------------+
-| - image |
-| - rect |
-| - health |
-+----------------+
+*Figure: UML class diagram showing the main classes and relationships in the Angry Tao project.*
 
 ## Explanation
 
@@ -55,4 +31,3 @@ Angry Tao is a 2D shooting game developed in Python using Pygame. The player con
 
 ---
 
-This UML diagram and description summarize the core architecture of the Angry Tao project.
