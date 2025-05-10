@@ -1,5 +1,6 @@
 import pygame as pg
 import random as ra
+import math as a
 from Angry_Tao_game import *
 from Tao_config import Config
 
@@ -17,59 +18,37 @@ class Game:
         self.running = True
         self.current_stage = 1
         self.upgrade_available = False
-        self.portal_cooldown = 0  # cooldown timer in frames
-
-    def update_game(self):
-        keys = pg.key.get_pressed()
-        if keys[pg.K_UP] or keys[pg.K_w]:
-            self.character.move(-5)
-        if keys[pg.K_DOWN] or keys[pg.K_s]:
-            self.character.move(5)
-        if keys[pg.K_SPACE]:
-            self.character.shoot()
-        if keys[pg.K_LEFT]:
-            self.character.switch_item(-1)
-        elif keys[pg.K_RIGHT]:
-            self.character.switch_item(1)
-
-        self.character.bullets.update()
-        self.stage.enemies.update()
-        self.handle_collisions()
-        self.handle_portals()
+        self.portal_cooldown = 0
 
     def handle_collisions(self):
-        bullet_hits_enemy = pg.sprite.groupcollide(self.character.bullets, self.stage.enemies, True, False)
+        bullet_hits_enemy = pg.sprite.groupcollide(
+            self.character.bullets, self.stage.enemies, True, False
+        )
         for bullet, enemies in bullet_hits_enemy.items():
             for enemy in enemies:
-                if enemy.take_damage(1):
+                if enemy.take_damage(bullet.damage):
                     self.character.score += 10
 
-        bullet_hits_obstacle = pg.sprite.groupcollide(self.character.bullets, self.stage.stage_obstacles, True, False)
+        bullet_hits_obstacle = pg.sprite.groupcollide(
+            self.character.bullets, self.stage.stage_obstacles, True, False
+        )
         for bullet, obstacles in bullet_hits_obstacle.items():
             for obstacle in obstacles:
-                if obstacle.take_damage(1):
-                    if obstacle.material.lower() == 'bomb':
-                        explosion_radius = Config.obstacle_size * 1.5
-                        for obs in self.stage.stage_obstacles:
-                            if a.dist(obs.rect.center, obstacle.rect.center) < explosion_radius:
-                                obs.kill()
-                        for enemy in self.stage.enemies:
-                            if a.dist(enemy.rect.center, obstacle.rect.center) < explosion_radius:
-                                enemy.take_damage(2)
-                                if not enemy.alive():
-                                    self.character.score += 15
-
-        for bullet in self.character.bullets:
-            if not self.stage.border_rect.contains(bullet.rect):
-                bullet.kill()
-                self.character.missed_shots += 1
+                if obstacle.take_damage(bullet.damage):
+                    if bullet.skill == 'EXPLOSIVE':
+                        # Explode and scatter bullets
+                        for b in self.character.bullets:
+                            if isinstance(b, ExplosiveBullet) and b.rect.colliderect(obstacle.rect):
+                                b.explode(self)
+                                break
 
     def handle_portals(self):
         portal_w, portal_h = 40, 20
-        char_x = self.character.rect.centerx
-        left_top = pg.Rect(char_x - portal_w // 2, 100, portal_w, portal_h)
-        left_bottom = pg.Rect(char_x - portal_w // 2, 100 + Config.stage_height - portal_h, portal_w, portal_h)
-        right_x = Config.game_width - char_x
+        left_x = Config.stage_side_width // 2
+        right_x = Config.stage_side_width + Config.stage_middle_width + (Config.stage_side_width // 2)
+
+        left_top = pg.Rect(left_x - portal_w // 2, 100, portal_w, portal_h)
+        left_bottom = pg.Rect(left_x - portal_w // 2, 100 + Config.stage_height - portal_h, portal_w, portal_h)
         right_top = pg.Rect(right_x - portal_w // 2, 100, portal_w, portal_h)
         right_bottom = pg.Rect(right_x - portal_w // 2, 100 + Config.stage_height - portal_h, portal_w, portal_h)
 
@@ -78,22 +57,33 @@ class Game:
 
         if self.portal_cooldown == 0:
             if self.character.rect.colliderect(left_top):
-                self.character.rect.center = right_bottom.center
-                self.portal_cooldown = 30  # cooldown frames (~0.5 seconds at 60 FPS)
+                # Align character X to right_bottom portal center X
+                self.character.rect.centerx = right_bottom.centerx
+                # Position character slightly below portal center Y to avoid immediate re-teleport
+                self.character.rect.centery = right_bottom.centery + portal_h
+                self.portal_cooldown = 30
             elif self.character.rect.colliderect(right_bottom):
-                self.character.rect.center = left_top.center
+                self.character.rect.centerx = left_top.centerx
+                self.character.rect.centery = left_top.centery - portal_h
                 self.portal_cooldown = 30
             elif self.character.rect.colliderect(right_top):
-                self.character.rect.center = left_bottom.center
+                self.character.rect.centerx = left_bottom.centerx
+                self.character.rect.centery = left_bottom.centery + portal_h
                 self.portal_cooldown = 30
             elif self.character.rect.colliderect(left_bottom):
-                self.character.rect.center = right_top.center
+                self.character.rect.centerx = right_top.centerx
+                self.character.rect.centery = right_top.centery - portal_h
                 self.portal_cooldown = 30
+
 
     def show_upgrade_menu(self):
         options = []
         if "Spread" not in self.unlocked_weapons:
             options.append(("Unlock Spread", lambda: self.unlocked_weapons.append("Spread")))
+        if "Shotgun" not in self.unlocked_weapons:
+            options.append(("Unlock Shotgun", lambda: self.unlocked_weapons.append("Shotgun")))
+        if "Sniper" not in self.unlocked_weapons:
+            options.append(("Unlock Sniper", lambda: self.unlocked_weapons.append("Sniper")))
         if "Explosive" not in self.unlocked_weapons:
             options.append(("Unlock Explosive", lambda: self.unlocked_weapons.append("Explosive")))
         options.append(("+10 Ammo", lambda: [setattr(item, 'max_ammo', item.max_ammo + 10) for item in self.character.items_list]))
@@ -115,6 +105,25 @@ class Game:
                             options[idx][1]()
                             selecting = False
 
+    def update_game(self):
+        self.character.update_cooldown()
+        keys = pg.key.get_pressed()
+        if keys[pg.K_UP] or keys[pg.K_w]:
+            self.character.move(-5)
+        if keys[pg.K_DOWN] or keys[pg.K_s]:
+            self.character.move(5)
+        if keys[pg.K_SPACE]:
+            self.character.shoot()
+        if keys[pg.K_LEFT] or keys[pg.K_q]:
+            self.character.switch_item(-1)
+        elif keys[pg.K_RIGHT] or keys[pg.K_e]:
+            self.character.switch_item(1)
+
+        self.character.bullets.update()
+        self.stage.enemies.update()
+        self.handle_collisions()
+        self.handle_portals()
+
     def run(self):
         while self.running:
             for event in pg.event.get():
@@ -124,6 +133,7 @@ class Game:
             self.update_game()
 
             self.screen.fill(Config.game_color['BL'])
+            self.drawer.draw_portal_lines()
             self.drawer.draw_stage(self.stage)
             self.drawer.draw_portals(self.character)
             self.drawer.draw_character(self.character)
@@ -137,7 +147,9 @@ class Game:
             if self.stage.check_stage_clear() and not self.upgrade_available:
                 self.upgrade_available = True
                 self.show_upgrade_menu()
+                current_score = self.character.score
                 self.character = Character(self.unlocked_weapons)
+                self.character.score = current_score
                 self.stage = Stage()
                 self.upgrade_available = False
 
