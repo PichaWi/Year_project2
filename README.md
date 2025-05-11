@@ -35,7 +35,7 @@ Listed in `requirements.txt`
 
 - Use arrow keys or W/S to move the character vertically.
 - Use spacebar to shoot.
-- Use left/right arrow keys to switch weapons.
+- Use left/right arrow keys or E and Q button to switch weapons.
 - Avoid shooting civilians to prevent score penalty and possible game over.
 
 ## License
