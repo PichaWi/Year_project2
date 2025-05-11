@@ -54,11 +54,10 @@ The player can use multiple weapons, each with unique skills, ammo capacity, and
 | Weapon Name | Skill Type   | Ammo Capacity | UI Color  | Description                                  |
 |-------------|--------------|---------------|-----------|----------------------------------------------|
 | Normal      | Single Shot  | Moderate      | Gray      | Standard weapon with balanced performance    |
-| Spread      | Multi Shot   | Moderate      | Green     | Fires multiple bullets in a spread pattern   |
+| Spread      | spread Shot   | Moderate      | Green     | Fires multiple bullets in a spread pattern   |
 | Explosive   | Area Damage  | Low           | Red       | Bullets explode causing area damage          |
-| Shatter     | Piercing     | Low           | White     | Bullets pierce through multiple targets      |
-| Heat        | Fire Damage  | Low           | Orange    | Bullets cause burning damage over time       |
-| Ice         | Slow Effect  | Low           | Blue      | Bullets slow enemies on hit                   |
+| Sniper      | High single shot     | Low           | White     | Bullets firing high damage      |
+| Shotgun     | Triple shot  | Low           | Orange    | Bullets shooting three bullet in vertical line       |
 
 Players can switch weapons during gameplay to adapt to different challenges
 
