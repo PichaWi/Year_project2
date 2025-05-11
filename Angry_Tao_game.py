@@ -10,9 +10,7 @@ class Obstacle(pg.sprite.Sprite):
         self.material = material
         self.color = Config.game_color.get(material.upper(), Config.game_color['LIGHTGRAY'])
         self.image.fill(self.color)
-        
-        # Draw black border (2 pixels thick)
-        border_color = (0, 0, 0)  # Black
+        border_color = (0, 0, 0)  
         border_thickness = 2
         pg.draw.rect(self.image, border_color, self.image.get_rect(), border_thickness)
         
@@ -56,7 +54,6 @@ class Enemy(pg.sprite.Sprite):
         self.health = 2
 
     def update(self):
-        # Enemies do not move
         pass
 
     def take_damage(self, damage):
@@ -174,7 +171,7 @@ class ExplosiveBlock(pg.sprite.Sprite):
         self.image = pg.Surface((size, size), pg.SRCALPHA)
         self.image.fill((255, 100, 0, 150))
         self.rect = self.image.get_rect(center=(x, y))
-        self.timer = 60  # lasts about 1 second
+        self.timer = 60  
 
     def update(self):
         self.timer -= 1
@@ -216,14 +213,11 @@ class ExplosiveBullet(Bullet):
 class Character(pg.sprite.Sprite):
     def __init__(self, unlocked_weapons=None):
         super().__init__()
-        # Load character image with transparency
         self.image = pg.image.load("image/AngryTao.jpg").convert_alpha()
-        # Optionally scale image to fit your character size
         desired_size = Config.character_radius * 2
         self.image = pg.transform.scale(self.image, (desired_size, desired_size))
         self.rect = self.image.get_rect()
-        
-        # Set initial position aligned with portal X as before
+    
         portal_x = Config.stage_side_width // 2
         spawn_y = Config.game_height // 2
         self.rect.center = (portal_x, spawn_y)
