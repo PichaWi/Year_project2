@@ -55,6 +55,8 @@ class Obstacle(pg.sprite.Sprite):
 class Enemy(pg.sprite.Sprite):
     def __init__(self, x, y):
         super().__init__()
+        ## Use this instead in case of cannot open image, use find path here ##
+        #self.image = pg.image.load(r"C:...").convert_alpha() 
         original_image = pg.image.load("image/Enemy.png").convert_alpha()
         desired_width, desired_height = 50, 50
         self.image = pg.transform.scale(original_image, (desired_width, desired_height))        
@@ -74,6 +76,8 @@ class Enemy(pg.sprite.Sprite):
 class Civilian(pg.sprite.Sprite):
     def __init__(self, x, y):
         super().__init__()
+        ## Use this instead in case of cannot open image, use find path here ##
+        #self.image = pg.image.load(r"C:...").convert_alpha() 
         self.image = pg.image.load("image/civilian.webp").convert_alpha()
         desired_width, desired_height = Config.enemy_size, Config.enemy_size * 2
         self.image = pg.transform.scale(self.image, (desired_width, desired_height))
@@ -222,6 +226,8 @@ class ExplosiveBullet(Bullet):
 class Character(pg.sprite.Sprite):
     def __init__(self, unlocked_weapons=None):
         super().__init__()
+        ## Use this instead in case of cannot open image, use find path here ##
+        #self.image = pg.image.load(r"C:...").convert_alpha() 
         self.image = pg.image.load("image/AngryTao.jpg").convert_alpha()
         desired_size = Config.character_radius * 2
         self.image = pg.transform.scale(self.image, (desired_size, desired_size))

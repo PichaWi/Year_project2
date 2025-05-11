@@ -8,6 +8,8 @@ class Game:
         pg.init()
         self.screen = pg.display.set_mode((Config.game_width, Config.game_height))
         pg.display.set_caption("Angry Tao Project")
+        ## Use this instead in case of cannot open image, use find path here ##
+        #self.image = pg.image.load(r"C:...").convert_alpha() 
         self.background_image = pg.image.load("image/Background.jpg").convert()
         self.background_image = pg.transform.scale(self.background_image, (Config.game_width, Config.game_height))
 
