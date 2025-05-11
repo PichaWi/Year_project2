@@ -3,6 +3,14 @@ import random as ra
 import math as math
 from Tao_config import Config
 
+BULLET_COLORS = {
+    "Normal": (128, 128, 128),    # Gray
+    "Spread": (0, 200, 0),        # Green
+    "Shotgun": (220, 0, 0),       # Red
+    "Sniper": (255, 255, 255),    # White
+    "Explosive": (255, 140, 0),   # Orange
+}
+
 class Obstacle(pg.sprite.Sprite):
     def __init__(self, x, y, material):
         super().__init__()
@@ -182,7 +190,8 @@ class Bullet(pg.sprite.Sprite):
     def __init__(self, x, y, direction, skill, speed=None, damage=1):
         super().__init__()
         self.image = pg.Surface([Config.bullet_radius * 2, Config.bullet_radius * 2], pg.SRCALPHA)
-        pg.draw.circle(self.image, (255,255,0), (Config.bullet_radius, Config.bullet_radius), Config.bullet_radius)
+        color = BULLET_COLORS.get(skill.capitalize(), (255, 255, 0))  
+        pg.draw.circle(self.image, color, (Config.bullet_radius, Config.bullet_radius), Config.bullet_radius)
         self.rect = self.image.get_rect(center=(x, y))
         self.direction = direction
         self.speed = speed if speed else Config.bullet_speed
