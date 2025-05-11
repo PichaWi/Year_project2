@@ -37,6 +37,7 @@ Listed in `requirements.txt`
 - Use spacebar to shoot.
 - Use left/right arrow keys or E and Q button to switch weapons.
 - Avoid shooting civilians to prevent score penalty and possible game over.
+- (Optional) you can change the image location and use my comment code instead of normal one if image don't work
 
 ## License
 
